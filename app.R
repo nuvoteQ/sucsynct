@@ -1,6 +1,6 @@
 library(teal.modules.clinical)
 library(teal.modules.general)
-options(shiny.useragg = FALSE)
+options(shiny.useragg = FALSE, shiny.launch.browser = TRUE)
 
 ## Data reproducible code ----
 data <- teal_data()
