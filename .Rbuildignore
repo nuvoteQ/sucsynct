@@ -1,0 +1,5 @@
+^dev$
+^app\.R$
+^sucsynct\.Rproj$
+^\.Rproj\.user$
+^www$

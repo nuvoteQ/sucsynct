@@ -1,317 +1,156 @@
-library(teal.modules.clinical)
-library(teal.modules.general)
-options(shiny.useragg = FALSE, shiny.launch.browser = TRUE)
+# ---- libraries ----
+library(dplyr)
+library(ggplot2)
+library(glue)
+library(leaflet)
+library(plotly)
+library(sass)
+library(shiny)
+library(shiny.fluent)
+library(shiny.router)
+library(shiny.react)
 
-## Data reproducible code ----
-data <- teal_data()
-data <- within(data, {
-  library(random.cdisc.data)
-  library(nestcolor)
+# ---- tutorial-part1 ----
+shiny.react::enableReactDebugMode()
 
-  ADSL <- radsl(seed = 1)
-  ADMH <- radmh(ADSL, seed = 1)
-  ADAE <- radae(ADSL, seed = 1)
-  ADCM <- radcm(ADSL, seed = 1)
-  ADVS <- radvs(ADSL, seed = 1)
-  ADLB <- radlb(ADSL, seed = 1)
-
-  ## Modify ADCM
-  ADCM$CMINDC <- paste0("Indication_", as.numeric(ADCM$CMDECOD))
-  ADCM$CMDOSE <- 1
-  ADCM$CMTRT <- ADCM$CMCAT
-  ADCM$CMDOSU <- "U"
-  ADCM$CMROUTE <- "CMROUTE"
-  ADCM$CMDOSFRQ <- "CMDOSFRQ"
-  ADCM$CMASTDTM <- ADCM$ASTDTM
-  ADCM$CMAENDTM <- ADCM$AENDTM
-
-  teal.data::col_labels(
-    ADCM[c("CMINDC", "CMTRT", "ASTDY", "AENDY")]
-  ) <- c(
-    "Indication",
-    "Reported Name of Drug, Med, or Therapy",
-    "Study Day of Start of Medication",
-    "Study Day of End of Medication"
-  )
-
-  ## Modify ADHM
-  ADMH[["MHDISTAT"]] <- "ONGOING"
-  teal.data::col_labels(ADMH[c("MHDISTAT")]) <- c("Status of Disease")
-})
-
-datanames <- c("ADSL", "ADMH", "ADAE", "ADCM", "ADVS", "ADLB")
-datanames(data) <- datanames
-join_keys(data) <- default_cdisc_join_keys[datanames]
-
-## App configuration ----
-ADSL <- data[["ADSL"]]
-ADMH <- data[["ADMH"]]
-ADAE <- data[["ADAE"]]
-ADCM <- data[["ADCM"]]
-ADVS <- data[["ADVS"]]
-ADLB <- data[["ADLB"]]
+# ---- header ----
+header <- tagList(
+  img(src = "XAsset 2scigenix.png", class = "logo"),
+  div(Text(variant = "xLarge", "Manual Edit Checker"), class = "title"),
+  CommandBar(
+    items = list(
+      CommandBarItem("New", "Add", subitems = list(
+        CommandBarItem("Email message", "Mail", key = "emailMessage", href = "mailto:me@example.com"),
+        CommandBarItem("Calendar event", "Calendar", key = "calendarEvent")
+      )),
+      CommandBarItem("Upload sales plan", "Upload"),
+      CommandBarItem("Share analysis", "Share"),
+      CommandBarItem("Download report", "Download")
+    ),
+    farItems = list(
+      CommandBarItem("Grid view", "Tiles", iconOnly = TRUE),
+      CommandBarItem("Info", "Info", iconOnly = TRUE)
+    ),
+    style = list(width = "100%")))
 
 
-## Define variable inputs
-aeterm_input <- choices_selected(
-  choices = variable_choices(ADAE, "AETERM"),
-  selected = "AETERM"
-)
 
-cmtrt_input <- choices_selected(
-  choices = variable_choices(ADCM, "CMTRT"),
-  selected = "CMTRT"
-)
-
-cmindc_input <- choices_selected(
-  choices = variable_choices(ADCM, "CMINDC"),
-  selected = "CMINDC"
-)
-
-atirel_input <- choices_selected(
-  choices = variable_choices(ADCM, "ATIREL"),
-  selected = "ATIREL"
-)
-
-cmdecod_input <- choices_selected(
-  choices = variable_choices(ADCM, "CMDECOD"),
-  selected = "CMDECOD"
-)
-
-## App header and footer ----
-nest_logo <- "https://raw.githubusercontent.com/insightsengineering/hex-stickers/main/PNG/nest.png"
-app_source <- "https://github.com/insightsengineering/teal.gallery/tree/main/patient-profile"
-gh_issues_page <- "https://github.com/insightsengineering/teal.gallery/issues"
-
-header <- tags$span(
-  style = "display: flex; align-items: center; justify-content: space-between; margin: 10px 0 10px 0;",
-  tags$span("My first teal app", style = "font-size: 30px;"),
-  tags$span(
-    style = "display: flex; align-items: center;",
-    tags$img(src = nest_logo, alt = "NEST logo", height = "45px", style = "margin-right:10px;"),
-    tags$span(style = "font-size: 24px;", "NEST @ Roche")
-  )
-)
-
-footer <- tags$p(
-  "This teal app is brought to you by the NEST Team at Roche/Genentech.
-        For more information, please visit:",
-  tags$a(href = app_source, target = "_blank", "Source Code"), ", ",
-  tags$a(href = gh_issues_page, target = "_blank", "Report Issues")
-)
-
-app <- init(
-  data = data,
-  title = build_app_title("Patient Profile Analysis Teal Demo App", nest_logo),
-  header = header,
-  footer = footer,
-  filter = teal_slices(
-    count_type = "all",
-    teal_slice(dataname = "ADSL", varname = "SEX"),
-    teal_slice(dataname = "ADSL", varname = "AGE")
+# ---- navigation ----
+navigation <- Nav(
+  groups = list(
+    list(links = list(
+      list(name = 'Home', url = '#!/', key = 'home', icon = 'Home'),
+      list(name = 'Analysis', url = '#!/other', key = 'analysis', icon = 'AnalyticsReport'),
+      list(name = 'shiny.fluent', url = 'http://github.com/Appsilon/shiny.fluent', key = 'repo', icon = 'GitGraph'),
+      list(name = 'shiny.react', url = 'http://github.com/Appsilon/shiny.react', key = 'shinyreact', icon = 'GitGraph'),
+      list(name = 'Appsilon', url = 'http://appsilon.com', key = 'appsilon', icon = 'WebAppBuilderFragment')
+    ))
   ),
-  modules = modules(
-    tm_front_page(
-      label = "App Info",
-      header_text = c(
-        "Info about input data source" =
-          "This app uses CDISC ADaM datasets randomly generated by `random.cdisc.data` R packages"
-      ),
-      tables = list(
-        `NEST packages used in this demo app` = data.frame(
-          Packages = c("teal.modules.general", "teal.modules.clinical", "random.cdisc.data")
-        )
-      )
-    ),
-    tm_t_pp_basic_info(
-      label = "Basic Info",
-      dataname = "ADSL",
-      patient_col = "USUBJID",
-      vars = choices_selected(
-        choices = variable_choices(ADSL),
-        selected = c("ARM", "AGE", "SEX", "COUNTRY", "RACE", "EOSSTT")
-      )
-    ),
-    tm_t_pp_medical_history(
-      label = "Medical History",
-      parentname = "ADSL",
-      patient_col = "USUBJID",
-      mhterm = choices_selected(
-        choices = variable_choices(ADMH, "MHTERM"),
-        selected = "MHTERM"
-      ),
-      mhbodsys = choices_selected(
-        choices = variable_choices(ADMH, "MHBODSYS"),
-        selected = "MHBODSYS"
-      ),
-      mhdistat = choices_selected(
-        choices = variable_choices(ADMH, "MHDISTAT"),
-        selected = "MHDISTAT"
-      )
-    ),
-    tm_t_pp_prior_medication(
-      label = "Prior Medication",
-      parentname = "ADSL",
-      patient_col = "USUBJID",
-      atirel = atirel_input,
-      cmdecod = cmdecod_input,
-      cmindc = cmindc_input,
-      cmstdy = choices_selected(
-        choices = variable_choices(ADCM, "ASTDY"),
-        selected = "ASTDY"
-      )
-    ),
-    tm_g_pp_vitals(
-      label = "Vitals",
-      parentname = "ADSL",
-      patient_col = "USUBJID",
-      plot_height = c(600L, 200L, 2000L),
-      paramcd = choices_selected(
-        choices = variable_choices(ADVS, "PARAMCD"),
-        selected = "PARAMCD"
-      ),
-      xaxis = choices_selected(
-        choices = variable_choices(ADVS, "ADY"),
-        selected = "ADY"
-      ),
-      aval_var = choices_selected(
-        choices = variable_choices(ADVS, "AVAL"),
-        selected = "AVAL"
-      )
-    ),
-    tm_g_pp_therapy(
-      label = "Therapy",
-      parentname = "ADSL",
-      patient_col = "USUBJID",
-      plot_height = c(600L, 200L, 2000L),
-      atirel = atirel_input,
-      cmdecod = cmdecod_input,
-      cmindc = cmindc_input,
-      cmdose = choices_selected(
-        choices = variable_choices(ADCM, "CMDOSE"),
-        selected = "CMDOSE"
-      ),
-      cmtrt = cmtrt_input,
-      cmdosu = choices_selected(
-        choices = variable_choices(ADCM, "CMDOSU"),
-        selected = "CMDOSU"
-      ),
-      cmroute = choices_selected(
-        choices = variable_choices(ADCM, "CMROUTE"),
-        selected = "CMROUTE"
-      ),
-      cmdosfrq = choices_selected(
-        choices = variable_choices(ADCM, "CMDOSFRQ"),
-        selected = "CMDOSFRQ"
-      ),
-      cmstdy = choices_selected(
-        choices = variable_choices(ADCM, "ASTDY"),
-        selected = "ASTDY"
-      ),
-      cmendy = choices_selected(
-        choices = variable_choices(ADCM, "AENDY"),
-        selected = "AENDY"
-      )
-    ),
-    tm_g_pp_adverse_events(
-      label = "Adverse Events",
-      parentname = "ADSL",
-      patient_col = "USUBJID",
-      plot_height = c(600L, 200L, 2000L),
-      aeterm = aeterm_input,
-      tox_grade = choices_selected(
-        choices = variable_choices(ADAE, "AETOXGR"),
-        selected = "AETOXGR"
-      ),
-      causality = choices_selected(
-        choices = variable_choices(ADAE, "AEREL"),
-        selected = "AEREL"
-      ),
-      outcome = choices_selected(
-        choices = variable_choices(ADAE, "AEOUT"),
-        selected = "AEOUT"
-      ),
-      action = choices_selected(
-        choices = variable_choices(ADAE, "AEACN"),
-        selected = "AEACN"
-      ),
-      time = choices_selected(
-        choices = variable_choices(ADAE, "ASTDY"),
-        selected = "ASTDY"
-      ),
-      decod = NULL
-    ),
-    tm_t_pp_laboratory(
-      label = "Lab Values",
-      parentname = "ADSL",
-      patient_col = "USUBJID",
-      paramcd = choices_selected(
-        choices = variable_choices(ADLB, "PARAMCD"),
-        selected = "PARAMCD"
-      ),
-      param = choices_selected(
-        choices = variable_choices(ADLB, "PARAM"),
-        selected = "PARAM"
-      ),
-      timepoints = choices_selected(
-        choices = variable_choices(ADLB, "ADY"),
-        selected = "ADY"
-      ),
-      anrind = choices_selected(
-        choices = variable_choices(ADLB, "ANRIND"),
-        selected = "ANRIND"
-      ),
-      aval_var = choices_selected(
-        choices = variable_choices(ADLB, "AVAL"),
-        selected = "AVAL"
-      ),
-      avalu_var = choices_selected(
-        choices = variable_choices(ADLB, "AVALU"),
-        selected = "AVALU"
-      )
-    ),
-    tm_g_pp_patient_timeline(
-      label = "Patient Timeline",
-      parentname = "ADSL",
-      patient_col = "USUBJID",
-      plot_height = c(600L, 200L, 2000L),
-      font_size = c(15L, 8L, 25L),
-      cmdecod = cmdecod_input,
-      aeterm = aeterm_input,
-      aetime_start = choices_selected(
-        choices = variable_choices(ADAE, "ASTDTM"),
-        selected = "ASTDTM"
-      ),
-      aetime_end = choices_selected(
-        choices = variable_choices(ADAE, "AENDTM"),
-        selected = "AENDTM"
-      ),
-      dstime_start = choices_selected(
-        choices = variable_choices(ADCM, "CMASTDTM"),
-        selected = "CMASTDTM"
-      ),
-      dstime_end = choices_selected(
-        choices = variable_choices(ADCM, "CMAENDTM"),
-        selected = "CMAENDTM"
-      ),
-      aerelday_start = choices_selected(
-        choices = variable_choices(ADAE, "ASTDY"),
-        selected = "ASTDY"
-      ),
-      aerelday_end = choices_selected(
-        choices = variable_choices(ADAE, "AENDY"),
-        selected = "AENDY"
-      ),
-      dsrelday_start = choices_selected(
-        choices = variable_choices(ADCM, "ASTDY"),
-        selected = "ASTDY"
-      ),
-      dsrelday_end = choices_selected(
-        choices = variable_choices(ADCM, "AENDY"),
-        selected = "AENDY"
-      ),
+  initialSelectedKey = 'home',
+  styles = list(
+    root = list(
+      height = '100%',
+      boxSizing = 'border-box',
+      overflowY = 'auto'
     )
   )
 )
 
-shinyApp(app$ui, app$server)
+# ---- footer ----
+footer <- Stack(
+  horizontal = TRUE,
+  horizontalAlign = 'space-between',
+  tokens = list(childrenGap = 20),
+  Text(variant = "medium", "Copyright (C) Scigenix Pty. Ltd.", block=TRUE),
+  Text(variant = "medium", nowrap = FALSE, "info@scigenix.ai"),
+  Text(variant = "medium", nowrap = FALSE, "All rights reserved.")
+)
+
+# ---- router ----
+router <- router_ui(
+  route("/", generate_home_page()),
+  route("other", generate_analysis_page())
+)
+
+# ---- router-ui ----
+ui <- fluentPage(
+  layout(router, header, navigation, footer),
+  tags$head(
+    tags$link(href = "style.css", rel = "stylesheet", type = "text/css")
+  ))
+
+
+# ---- server ----
+server <- function(input, output, session) {
+  
+  # ---- router-server ----
+  router_server()
+  
+  # ---- server-home ----
+  crf_data <- crfServer("crfInput")
+  observeEvent(
+    crf_data(),
+    {
+      print(crf_data())
+    },
+    ignoreInit = TRUE
+  )
+  
+  # ---- server-analysis ----
+  filtered_deals <- reactive({
+    req(input$fromDate)
+    selectedPeople <- (
+      if (length(input$selectedPeople) > 0) input$selectedPeople
+      else fluentPeople$key
+    )
+    minClosedVal <- if (isTRUE(input$closedOnly)) 1 else 0
+    
+    filtered_deals <- fluentSalesDeals %>%
+      filter(
+        rep_id %in% selectedPeople,
+        date >= input$fromDate,
+        date <= input$toDate,
+        deal_amount >= input$slider,
+        is_closed >= minClosedVal
+      ) %>%
+      mutate(is_closed = ifelse(is_closed == 1, "Yes", "No"))
+  })
+  
+  output$map <- renderLeaflet({
+    points <- cbind(filtered_deals()$LONGITUDE, filtered_deals()$LATITUDE)
+    leaflet() %>%
+      addProviderTiles(providers$Stamen.TonerLite, options = providerTileOptions(noWrap = TRUE)) %>%
+      addMarkers(data = points)
+  })
+  
+  output$plot <- renderPlotly({
+    p <- ggplot(filtered_deals(), aes(x = rep_name)) +
+      geom_bar(fill = unique(filtered_deals()$color)) +
+      ylab("Number of deals") +
+      xlab("Sales rep") +
+      theme_light()
+    ggplotly(p, height = 300)
+  })
+  
+  details_list_columns <- tibble(
+    fieldName = c("rep_name", "date", "deal_amount", "client_name", "city", "is_closed"),
+    name = c("Sales rep", "Close date", "Amount", "Client", "City", "Is closed?"),
+    key = fieldName
+  )
+  
+  output$analysis <- renderUI({
+    items_list <- if(nrow(filtered_deals()) > 0){
+      DetailsList(items = filtered_deals(), columns = details_list_columns)
+    } else {
+      p("No matching transactions.")
+    }
+    
+    Stack(
+      tokens = list(childrenGap = 10), horizontal = TRUE,
+      makeCard("Top results", div(style="max-height: 500px; overflow: auto", items_list)),
+      makeCard("Map", leafletOutput("map"))
+    )
+  })
+}
+
+shinyApp(ui, server)
