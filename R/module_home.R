@@ -1,11 +1,11 @@
 
-#' generate_home_page
+#' homeUI
 #'
 #' @import shiny.fluent
 #' 
 #' @return A UI object
 #' @export
-generate_home_page <- function() {
+homeUI <- function() {
   
   # ---- home-page ----
   
@@ -26,19 +26,12 @@ generate_home_page <- function() {
     )
   )
   
-  card3 <- makeCard(
-    "Upload CRF data",
-    div(
-      crfUI("crfInput")
-    )
-  )
-  
-  home_page <- makePage(
+  home_view <- makePage(
     "This is a Fluent UI app built in Shiny",
     "shiny.react + Fluent UI = shiny.fluent",
-    div(card1, card2, card3)
+    div(card1, card2)
   )
   
-  home_page
+  home_view
   
 }

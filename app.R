@@ -70,9 +70,8 @@ footer <- Stack(
 
 # ---- router ----
 router <- router_ui(
-  route("/", generate_home_page()),
-  route("crf-data-upload", "Test"),
-  route("other", generate_analysis_page())
+  route("/", homeUI()),
+  route("crf-data-upload", crfDataUploadUI("crfInput"))
 )
 
 # ---- router-ui ----
@@ -90,7 +89,7 @@ server <- function(input, output, session) {
   router_server()
   
   # ---- server-home ----
-  crf_data <- crfServer("crfInput")
+  crf_data <- crfDataUploadServer("crfInput")
   observeEvent(
     crf_data(),
     {
