@@ -16,7 +16,7 @@ shiny.react::enableReactDebugMode()
 # ---- header ----
 header <- tagList(
   img(src = "XAsset 2scigenix.png", class = "logo"),
-  div(Text(variant = "xLarge", "Manual Edit Checker"), class = "title"),
+  div(Text(variant = "xLarge", "Sucsynct"), class = "title"),
   CommandBar(
     items = list(
       CommandBarItem("New", "Add", subitems = list(
@@ -38,13 +38,15 @@ header <- tagList(
 # ---- navigation ----
 navigation <- Nav(
   groups = list(
-    list(links = list(
-      list(name = 'Home', url = '#!/', key = 'home', icon = 'Home'),
-      list(name = 'Analysis', url = '#!/other', key = 'analysis', icon = 'AnalyticsReport'),
-      list(name = 'shiny.fluent', url = 'http://github.com/Appsilon/shiny.fluent', key = 'repo', icon = 'GitGraph'),
-      list(name = 'shiny.react', url = 'http://github.com/Appsilon/shiny.react', key = 'shinyreact', icon = 'GitGraph'),
-      list(name = 'Appsilon', url = 'http://appsilon.com', key = 'appsilon', icon = 'WebAppBuilderFragment')
-    ))
+    list(
+      links = list(
+        list(name = 'Home', url = '#!/', key = 'home', icon = 'Home'),
+        list(name = 'Configuration', url = '#!/config', key = 'config', icon = 'ConfigurationSolid'),
+        list(name = 'CRF Data Upload', url = '#!/crf-data-upload', key = 'crf-data-upload', icon = 'BulkUpload'),
+        list(name = 'Query Manager', url = '#!/query-manager', key = 'query-manager', icon = 'AnalyticsReport'),
+        list(name = 'Analysis', url = '#!/other', key = 'analysis', icon = 'AnalyticsReport')
+      )
+    )
   ),
   initialSelectedKey = 'home',
   styles = list(
@@ -61,7 +63,7 @@ footer <- Stack(
   horizontal = TRUE,
   horizontalAlign = 'space-between',
   tokens = list(childrenGap = 20),
-  Text(variant = "medium", "Copyright (C) Scigenix Pty. Ltd.", block=TRUE),
+  Text(variant = "medium", "Copyright (C) 2025 Scigenix Pty. Ltd.", block=TRUE),
   Text(variant = "medium", nowrap = FALSE, "info@scigenix.ai"),
   Text(variant = "medium", nowrap = FALSE, "All rights reserved.")
 )
@@ -69,6 +71,7 @@ footer <- Stack(
 # ---- router ----
 router <- router_ui(
   route("/", generate_home_page()),
+  route("crf-data-upload", "Test"),
   route("other", generate_analysis_page())
 )
 
