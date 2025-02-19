@@ -1,50 +1,36 @@
-# Example 2
 library(shiny)
 library(shiny.fluent)
 
-# Custom rendering of group headers
-navigation_styles <- list(
-  root = list(
-    height = "100%",
-    width = "30%",
-    boxSizing = "border-box",
-    border = "1px solid #eee",
-    overflowY = "auto"
-  )
-)
-
-link_groups <- list(
-  list(
-    name = "Pages",
-    links = list(
-      list(name = "Activity"),
-      list(name = "News")
-    )
-  ),
-  list(
-    name = "More Pages",
-    links = list(
-      list(name = "Settings"),
-      list(name = "Notes")
-    )
-  )
-)
-
-ui <- function(id) {
-  fluidPage(
-    Nav(
-      groups = link_groups,
-      selectedKey = "key1",
-      styles = navigation_styles,
-      onRenderGroupHeader = JS("group => React.createElement('h3', null, group.name)")
-    )
-  )
+ui <- function() {
+  # ns <- NS(id)
+  uiOutput("analysis")
 }
 
-server <- function(id) {
-  moduleServer(id, function(input, output, session) {})
+server <- function(input, output, session) {
+  
+  cars <- mtcars %>% tibble::rownames_to_column()
+  
+  details_list_columns <- tibble(
+    fieldName = colnames(cars),
+    name = colnames(cars) %>% toupper(),
+    key = fieldName
+  )
+  
+  output$analysis <- renderUI({
+    
+    items_list <- DetailsList(items = cars, columns = details_list_columns)
+    
+    Stack(
+      tokens = list(childrenGap = 5),
+      Text(variant = "large", "Cars DF", block = TRUE),
+      div(style="max-height: 500px; overflow: auto", items_list)
+    )
+  })
+  
 }
 
-if (interactive()) {
-  shinyApp(ui("app"), function(input, output) server("app"))
-}
+shinyApp(ui, server)
+
+
+
+

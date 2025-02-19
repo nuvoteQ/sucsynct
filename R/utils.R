@@ -57,3 +57,46 @@ layout <- function(mainUI, header, navigation, footer){
       div(class = "footer", footer)
   )
 }
+
+
+
+#' df_to_rowslist
+#' 
+#' Converts a dataframe to a list of row vectors.
+#'
+#' @param df A dataframe
+#' @param ... any additional arguments passed along. 
+#' (Used by \link[list_of_dfs_to_rowslist])
+#'
+#' @return List of row vectors
+#' @export
+#' @examples
+#' df_to_rowslist(mtcars)
+df_to_rowslist <- function(df, ...) {
+  df %>% 
+    apply(
+      1,
+      function(row) {
+        list(row)
+      }
+    )
+}
+
+
+#' list_of_dfs_to_rowslist
+#' 
+#' Conversts a list of dataframes into a grouped list of dataframe row vectors.
+#'
+#' @param list_dfs List of dataframes
+#'
+#' @return A grouped list of row vectors
+#' @export
+#'
+#' @examples
+#' list(one = mtcars, two = mtcars) %>% list_of_dfs_to_rowslist()
+list_of_dfs_to_rowslist <- function(list_dfs) {
+  list_dfs %>% 
+    purrr::imap(df_to_rowslist)
+}
+
+

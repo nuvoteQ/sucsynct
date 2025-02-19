@@ -85,6 +85,8 @@ ui <- fluentPage(
 # ---- server ----
 server <- function(input, output, session) {
   
+  rv <- reactiveValues()
+  
   # ---- router-server ----
   router_server()
   
@@ -94,6 +96,7 @@ server <- function(input, output, session) {
     crf_data(),
     {
       print(crf_data())
+      print(class(crf_data))
     },
     ignoreInit = TRUE
   )

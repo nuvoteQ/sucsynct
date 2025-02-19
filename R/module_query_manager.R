@@ -6,7 +6,7 @@
 #'
 #' @return A UI object
 #' @export
-queryManagerUI <- function(id) {
+queryManagerUI <- function(id, data) {
   filters <- Stack(
     tokens = list(childrenGap = 10),
     Stack(
@@ -36,6 +36,35 @@ queryManagerUI <- function(id) {
     Toggle.shinyInput("closedOnly", value = TRUE, label = "Include closed deals only?")
   )
   
+  grouped_list <- data %>% list_of_dfs_to_rowslist()
+  
+  details <- GroupedList(
+    items = data$names,
+    selectionMode = 0,
+    onRenderItemColumn = JS("(item, index, column) => {
+      const fieldContent = item[column.fieldName]
+      switch (column.key) {
+        case 'name':
+          return React.createElement(
+            'span',
+            {
+              style: { textAlign: 'right', width: '100%', display: 'block' }
+            },
+            fieldContent
+          );
+        case 'number':
+          return React.createElement(
+            'span',
+            {
+              style: { textAlign: 'left', width: '100%', display: 'block' }
+            },
+            `%${fieldContent}`
+          );
+        default:
+          return React.createElement('span', null, fieldContent);
+      }
+    }")
+  )
   
   # ---- analysis-page ----
   query_manager_view <- makePage(
@@ -45,8 +74,7 @@ queryManagerUI <- function(id) {
       Stack(
         horizontal = TRUE,
         tokens = list(childrenGap = 10),
-        makeCard("Filters", filters, size = 4, style = "max-height: 320px"),
-        makeCard("Deals count", plotlyOutput("plot"), size = 8, style = "max-height: 320px")
+        makeCard("Filters", details, size = 4, style = "max-height: 320px")
       ),
       uiOutput("analysis")
     )
@@ -54,3 +82,30 @@ queryManagerUI <- function(id) {
   
   query_manager_view
 }
+
+
+#' crfDataUploadServer
+#'
+#' @param id The NS id argument required for the module
+#' 
+#' @import shiny.fluent
+#' @importFrom purrr map set_names
+#' 
+#' @return A shiny module Server object
+#' @export
+queryManagerServer <- function(id, crf_data) {
+  moduleServer(id, function(input, output, session) {
+    data <- reactive({
+      if (is.null(input$crf_input)) {
+        return(NULL)
+      }
+      
+      input$crf_input$datapath %>% 
+        purrr::map(~read.csv(.x, header = TRUE)) %>% 
+        purrr::set_names(input$crf_input$name)
+    })
+    
+    data
+  })
+}
+
